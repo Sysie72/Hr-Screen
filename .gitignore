@@ -4,4 +4,5 @@ __pycache__/
 node_modules/
 backend/models/*.joblib
 backend/data/*.csv
+backend/data/jobs.json
 frontend/dist/
