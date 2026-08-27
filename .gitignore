@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+backend/models/*.joblib
+backend/data/*.csv
+frontend/dist/
