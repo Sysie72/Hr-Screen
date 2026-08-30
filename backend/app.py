@@ -17,10 +17,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from src.evaluation import comparison_report
-from src.explainability import explain_advanced_prediction
 from src.fairness_audit import audit_fairness
 from src.job_matching import match_resume_to_job
-from src.preprocessing import NUMERIC_COLUMN, TEXT_COLUMN, clean_text, load_and_split
+from src.preprocessing import load_and_split
 from src.resume_extraction import MAX_FILES, SUPPORTED_EXTENSIONS, parse_uploaded_files
 from src.train_advanced import MODEL_PATH as ADVANCED_PATH, train_advanced
 from src.train_baseline import MODEL_PATH as BASELINE_PATH, influential_terms, train_baseline
@@ -46,12 +45,6 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="HR-Screen API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-
-
-class Candidate(BaseModel):
-    resume_text: str = Field(min_length=10, max_length=20_000)
-    years_experience: float = Field(ge=0, le=70)
-    job_id: str
 
 
 class JobCreate(BaseModel):
@@ -81,38 +74,6 @@ def get_job_or_404(job_id: str) -> dict[str, Any]:
     if not job:
         raise HTTPException(status_code=404, detail="Offre introuvable. Créez ou sélectionnez une offre avant l'analyse.")
     return job
-
-
-def candidate_frame(candidate: Candidate) -> pd.DataFrame:
-    return pd.DataFrame([{TEXT_COLUMN: clean_text(candidate.resume_text), NUMERIC_COLUMN: candidate.years_experience}])
-
-
-def prediction(model: Any, data: pd.DataFrame) -> dict[str, Any]:
-    probability = float(model.predict_proba(data)[0, 1])
-    return {"decision": "Sélectionné" if probability >= 0.5 else "Rejeté", "probabilite_selection": round(probability, 4), "seuil": 0.5}
-
-
-def batch_predictions(records: list[dict]) -> list[dict[str, Any]]:
-    """Inférence vectorisée : une transformation par modèle pour tout le lot."""
-    if not records:
-        return []
-    data = pd.DataFrame([
-        {TEXT_COLUMN: clean_text(record["texte"]), NUMERIC_COLUMN: record["annees_experience"]}
-        for record in records
-    ])
-    baseline_scores = MODELS["baseline"].predict_proba(data)[:, 1]
-    advanced_scores = MODELS["advanced"].predict_proba(data)[:, 1]
-    results = []
-    for record, baseline_score, advanced_score in zip(records, baseline_scores, advanced_scores):
-        advanced_probability = float(advanced_score)
-        results.append({
-            "fichier": record["fichier"],
-            "annees_experience_extraites": record["annees_experience"],
-            "competences_extraites": record["competences_extraites"],
-            "baseline": {"decision": "Sélectionné" if baseline_score >= 0.5 else "Rejeté", "probabilite_selection": round(float(baseline_score), 4)},
-            "advanced": {"decision": "Sélectionné" if advanced_probability >= 0.5 else "Rejeté", "probabilite_selection": round(advanced_probability, 4)},
-        })
-    return sorted(results, key=lambda item: item["advanced"]["probabilite_selection"], reverse=True)
 
 
 def batch_job_matches(records: list[dict], job: dict[str, Any]) -> list[dict[str, Any]]:
@@ -145,13 +106,6 @@ def create_job(job_input: JobCreate) -> dict[str, Any]:
     jobs[job_id] = job
     save_jobs(jobs)
     return job
-
-
-@app.post("/predict")
-def predict(candidate: Candidate) -> dict[str, Any]:
-    job = get_job_or_404(candidate.job_id)
-    matching = match_resume_to_job(candidate.resume_text, candidate.years_experience, job)
-    return {"offre": {"id": job["id"], "titre": job["title"]}, "adequation": matching, "responsabilite_humaine": "L'IA propose, l'humain dispose. Le score évalue seulement l'adéquation aux critères déclarés de l'offre, pas la valeur d'une personne ni une décision d'embauche."}
 
 
 @app.post("/predict-batch")

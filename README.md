@@ -21,7 +21,7 @@ L'API est accessible sur `http://localhost:8000/docs`. Au premier démarrage, el
 
 Avant toute analyse, le RH crée ou sélectionne une offre : description, compétences obligatoires, compétences souhaitées et expérience minimale. Les CV sont ensuite comparés à **cette offre**, et non à un profil générique. Le score affiché est un score d'adéquation sur 100, composé de la couverture des compétences obligatoires (50 %), souhaitées (20 %), de l'expérience (15 %) et de la proximité textuelle avec la description (15 %) ; ce n'est pas une probabilité d'embauche.
 
-L'interface permet aussi l'analyse par lot de 200 CV maximum (`PDF`, `DOCX`, `TXT`, `CSV` ou archive `ZIP`). Le backend extrait le texte, les années d'expérience déclarées et des compétences à l'aide de règles Regex auditables. Les routes associées sont `POST /jobs`, `GET /jobs`, `POST /predict` et `POST /predict-batch`.
+L'interface permet l'analyse par lot de 200 CV maximum (`PDF`, `DOCX`, `TXT`, `CSV` ou archive `ZIP`). Le backend extrait le texte, les années d'expérience déclarées et des compétences à l'aide de règles Regex auditables. Les routes associées sont `POST /jobs`, `GET /jobs` et `POST /predict-batch`.
 
 ## Démarrage du frontend
 
@@ -33,4 +33,4 @@ npm install
 npm run dev
 ```
 
-Le client React s'ouvre habituellement sur `http://localhost:5173`. Les routes API principales sont `/predict`, `/evaluation`, `/fairness-audit` et `/baseline-terms`.
+Le client React s'ouvre habituellement sur `http://localhost:5173`. Les routes API principales sont `/predict-batch`, `/evaluation`, `/fairness-audit` et `/baseline-terms`.
